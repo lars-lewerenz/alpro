@@ -1,21 +1,30 @@
 #include <memory>
 #include <iostream>
 #include <queue>
+#include <vector>
 
 template <class T>
 class BinaryTree
 {
 public:
-    class BinaryTreeNode
+    class BinaryTreeNode : public std::enable_shared_from_this<BinaryTreeNode>
     {
     public:
         using NodePtr = std::shared_ptr<BinaryTreeNode>;
+        using WeakNodePtr = std::weak_ptr<BinaryTreeNode>;
 
         BinaryTreeNode(T newData) : data(newData) {}
+
+        BinaryTreeNode(NodePtr parent, T newData) : parent(parent), data(newData) {}
 
         T get_data()
         {
             return data;
+        }
+
+        WeakNodePtr get_parent()
+        {
+            return parent;
         }
 
         NodePtr get_left_child()
@@ -32,7 +41,7 @@ public:
         {
             if (!left_child)
             {
-                left_child = std::make_shared<BinaryTreeNode>(data);
+                left_child = std::make_shared<BinaryTreeNode>(this->shared_from_this(), data);
             }
             return left_child;
         }
@@ -41,13 +50,15 @@ public:
         {
             if (!right_child)
             {
-                right_child = std::make_shared<BinaryTreeNode>(data);
+                right_child = std::make_shared<BinaryTreeNode>(this->shared_from_this(), data);
             }
             return right_child;
         }
 
     private:
         T data;
+
+        WeakNodePtr parent;
         NodePtr left_child;
         NodePtr right_child;
     };
@@ -91,11 +102,66 @@ public:
         return nodes;
     }
 
-    void print_level_order()
+    void in_order_traversal(std::vector<NodePtr> &nodes, NodePtr root)
     {
-        for (auto pointer : get_level_order())
+        if (!root)
         {
-            std::cout << " " << pointer->get_data() << " -> ";
+            return;
+        }
+        in_order_traversal(nodes, root->get_left_child());
+        nodes.push_back(root);
+        in_order_traversal(nodes, root->get_right_child());
+    }
+
+    void pre_order_traversal(std::vector<NodePtr> &nodes, NodePtr root)
+    {
+        if (!root)
+        {
+            return;
+        }
+        nodes.push_back(root);
+        pre_order_traversal(nodes, root->get_left_child());
+        pre_order_traversal(nodes, root->get_right_child());
+    }
+
+    void post_order_traversal(std::vector<NodePtr> &nodes, NodePtr root)
+    {
+        if (!root)
+        {
+            return;
+        }
+        post_order_traversal(nodes, root->get_left_child());
+        post_order_traversal(nodes, root->get_right_child());
+        nodes.push_back(root);
+    }
+
+    std::vector<NodePtr> get_pre_order()
+    {
+        std::vector<NodePtr> nodes;
+        pre_order_traversal(nodes, root);
+        return nodes;
+    }
+
+    std::vector<NodePtr> get_in_order()
+    {
+        std::vector<NodePtr> nodes;
+        in_order_traversal(nodes, root);
+        return nodes;
+    }
+
+    std::vector<NodePtr> get_post_order()
+    {
+        std::vector<NodePtr> nodes;
+        post_order_traversal(nodes, root);
+        return nodes;
+    }
+
+    void print_order(const std::string &name, const std::vector<NodePtr> &order)
+    {
+        std::cout << name << " Traversierung: ";
+        for (auto pointer : order)
+        {
+            std::cout << pointer->get_data() << " -> ";
         }
         std::cout << " null" << std::endl;
     }
@@ -129,5 +195,11 @@ int main()
     root_right_right_child->set_left_child(11);
 
     // bei diesem Beispiel nicht so sinnvoll, weil der Baum NICHT linksvollstaendig ist.
-    tree.print_level_order();
+    // Also ist keine (eindeutige) Rekonstruktion moeglich
+    tree.print_order("Level Order", tree.get_level_order());
+    tree.print_order("In Order", tree.get_in_order());
+    tree.print_order("Pre Order", tree.get_pre_order());
+    tree.print_order("Post Order", tree.get_post_order());
+
+    std::cout << root_right_right_child->get_parent().lock()->get_data() << std::endl;
 }
